@@ -184,7 +184,3 @@ Este projeto está em desenvolvimento. A licença será definida após a escolha
 
 Este projeto está em desenvolvimento ativo. Contribuições são bem-vindas!
 
-## 📞 Suporte
-
-- Issues: [GitHub Issues](https://github.com/your-org/open-video-studio/issues)
-- Documentação: [Wiki](https://github.com/your-org/open-video-studio/wiki)
