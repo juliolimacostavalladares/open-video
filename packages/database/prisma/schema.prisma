@@ -1,0 +1,266 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum UserRole {
+  admin
+  editor
+  viewer
+}
+
+enum ProjectStatus {
+  draft
+  scripting
+  rendering
+  ready_for_review
+  approved
+  rejected
+  error
+}
+
+enum SceneStatus {
+  draft
+  media_pending
+  media_ready
+  tts_pending
+  tts_ready
+  ready
+  error
+}
+
+enum AssetKind {
+  image
+  video
+  audio
+}
+
+enum AssetSource {
+  upload
+  generated
+  external
+}
+
+enum AssetStatus {
+  ready
+  missing
+  processing
+}
+
+enum RenderJobStatus {
+  queued
+  running
+  succeeded
+  failed
+}
+
+enum YoutubePublishStatus {
+  idle
+  uploading
+  processing
+  scheduled
+  published
+  error
+}
+
+enum ApprovalAction {
+  approved
+  rejected
+}
+
+// =============================================================================
+// Models
+// =============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(editor)
+  avatarUrl String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  approvalLogs ApprovalLog[]
+
+  @@map("users")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  theme       String?
+  tone        String?
+  targetDuration Int?       @map("target_duration")
+  rawScript   String?       @map("raw_script")
+  status      ProjectStatus @default(draft)
+  tags        String[]      @default([])
+
+  // Voice profile
+  voiceProfileId String?    @map("voice_profile_id")
+  voiceProfile   VoiceProfile? @relation(fields: [voiceProfileId], references: [id], onDelete: SetNull)
+
+  // YouTube integration
+  youtubeChannelId     String?              @map("youtube_channel_id")
+  youtubeChannel       YoutubeChannel?      @relation(fields: [youtubeChannelId], references: [id], onDelete: SetNull)
+  youtubeVideoId       String?              @map("youtube_video_id")
+  youtubePublishStatus YoutubePublishStatus @default(idle) @map("youtube_publish_status")
+  scheduledPublishAt   DateTime?            @map("scheduled_publish_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  scenes       Scene[]
+  renderJobs   RenderJob[]
+  assets       Asset[]
+  approvalLogs ApprovalLog[]
+
+  @@map("projects")
+}
+
+model Scene {
+  id          String      @id @default(cuid())
+  projectId   String      @map("project_id")
+  orderIndex  Int         @map("order_index")
+  title       String
+  script      String
+  keywords    String[]    @default([])
+  status      SceneStatus @default(draft)
+
+  // Media asset
+  assetId   String? @map("asset_id")
+  asset     Asset?  @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  // Audio (TTS)
+  audioPath             String?  @map("audio_path")
+  audioMimeType         String?  @map("audio_mime_type")
+  audioDurationSeconds  Float?   @map("audio_duration_seconds")
+
+  // Voice profile override (optional, inherits from project if null)
+  voiceProfileId String?       @map("voice_profile_id")
+  voiceProfile   VoiceProfile? @relation(fields: [voiceProfileId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("scenes")
+}
+
+model VoiceProfile {
+  id                    String  @id @default(cuid())
+  name                  String
+  provider              String  @default("omnivoice")
+  samplePath            String? @map("sample_path")
+  sampleMimeType        String? @map("sample_mime_type")
+  sampleDurationSeconds Float?  @map("sample_duration_seconds")
+  status                String  @default("active") // active, archived
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  projects Project[]
+  scenes   Scene[]
+
+  @@map("voice_profiles")
+}
+
+model Asset {
+  id        String      @id @default(cuid())
+  projectId String      @map("project_id")
+  kind      AssetKind
+  source    AssetSource
+  path      String
+  mimeType  String?     @map("mime_type")
+  size      Int?
+  status    AssetStatus @default(ready)
+
+  // Attribution (for Pixabay)
+  attributionAuthor    String? @map("attribution_author")
+  attributionSource    String? @map("attribution_source")
+  attributionSourceUrl String? @map("attribution_source_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scenes  Scene[]
+
+  @@index([projectId])
+  @@map("assets")
+}
+
+model RenderJob {
+  id           String          @id @default(cuid())
+  projectId    String          @map("project_id")
+  status       RenderJobStatus @default(queued)
+  outputPath   String?         @map("output_path")
+  errorMessage String?         @map("error_message")
+  startedAt    DateTime?       @map("started_at")
+  completedAt  DateTime?       @map("completed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("render_jobs")
+}
+
+model YoutubeChannel {
+  id           String   @id @default(cuid())
+  channelId    String   @unique @map("channel_id")
+  title        String
+  thumbnailUrl String?  @map("thumbnail_url")
+  accessToken  String   @map("access_token")
+  refreshToken String   @map("refresh_token")
+  expiryDate   DateTime @map("expiry_date")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  projects Project[]
+
+  @@map("youtube_channels")
+}
+
+model ApprovalLog {
+  id        String         @id @default(cuid())
+  projectId String         @map("project_id")
+  userId    String         @map("user_id")
+  action    ApprovalAction
+  comment   String?
+  version   Int            @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("approval_logs")
+}

@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: open-video-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: open_video_studio
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (BullMQ)
+  redis:
+    image: redis:7-alpine
+    container_name: open-video-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: open-video-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 9Router (LLM Proxy)
+  9router:
+    image: decolua/9router:latest
+    container_name: open-video-9router
+    restart: unless-stopped
+    environment:
+      PORT: 20128
+      HOSTNAME: 0.0.0.0
+      DATA_DIR: /app/data
+      INITIAL_PASSWORD: "123456"  # Change in production!
+    ports:
+      - "20128:20128"
+    volumes:
+      - 9router-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:20128/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # OmniVoice Studio (TTS/Voice Cloning)
+  omnivoice:
+    image: palashdeb/omnivoice-studio:latest
+    container_name: open-video-omnivoice
+    restart: unless-stopped
+    environment:
+      PORT: 3900
+    ports:
+      - "8000:3900"  # host:8000 → container:3900 (Uvicorn listens here)
+    volumes:
+      - omnivoice-data:/app/data
+    # Note: OmniVoice requires GPU for optimal performance
+    # Uncomment below for GPU support (NVIDIA CUDA)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  9router-data:
+  omnivoice-data:

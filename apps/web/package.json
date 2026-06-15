@@ -1,0 +1,37 @@
+{
+  "name": "@open-video/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@auth/core": "^0.34.0",
+    "@open-video/config": "workspace:*",
+    "@remotion/cli": "^4.0.477",
+    "@remotion/player": "^4.0.477",
+    "autoprefixer": "^10.4.0",
+    "clsx": "^2.1.0",
+    "lucide-react": "^0.400.0",
+    "next": "^14.2.0",
+    "next-auth": "^4.24.0",
+    "postcss": "^8.4.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-player": "^3.4.0",
+    "remotion": "^4.0.477",
+    "tailwind-merge": "^2.3.0",
+    "tailwindcss": "^3.4.0",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.0"
+  }
+}

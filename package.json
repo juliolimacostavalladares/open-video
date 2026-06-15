@@ -1,0 +1,36 @@
+{
+  "name": "open-video-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plataforma web open-source para criação automatizada de vídeos com IA",
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "db:start": "docker compose up -d postgres",
+    "db:stop": "docker compose stop postgres",
+    "db:migrate": "pnpm --filter @open-video/database run migrate",
+    "db:seed": "pnpm --filter @open-video/database run seed",
+    "db:studio": "pnpm --filter @open-video/database run studio",
+    "infra:start": "docker compose up -d postgres redis minio 9router omnivoice",
+    "infra:stop": "docker compose stop",
+    "infra:logs": "docker compose logs -f",
+    "clean": "pnpm -r exec rm -rf node_modules dist .next .turbo"
+  },
+  "keywords": [
+    "video",
+    "ai",
+    "remotion",
+    "text-to-speech",
+    "video-generation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
